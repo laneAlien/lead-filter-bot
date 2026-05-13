@@ -1,0 +1,60 @@
+[project]
+name = "lead-filter-bot"
+version = "0.1.0"
+description = "AI-powered Telegram bot for qualifying inbound leads for digital agencies"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.4",
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "pydantic-settings",
+    "sqlalchemy>=2",
+    "aiosqlite",
+    "asyncpg",
+    "alembic",
+    "openai",
+    "httpx",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "faker",
+]
+
+[project.scripts]
+bot = "apps.bot.main:main"
+api = "apps.api.main:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["B008", "RUF001"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["core/"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps", "core"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
