@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
@@ -9,15 +11,16 @@ from core.db import init_db
 settings = get_settings()
 logging.basicConfig(level=settings.log_level.upper())
 
-app = FastAPI(title="lead-filter-bot API", version="0.1.0")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    await init_db()
+    yield
+
+
+app = FastAPI(title="lead-filter-bot API", version="0.1.0", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(qualify.router)
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    await init_db()
 
 
 def main() -> None:

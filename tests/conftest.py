@@ -21,5 +21,10 @@ def settings_test(monkeypatch: pytest.MonkeyPatch) -> Settings:
 
 
 @pytest.fixture(autouse=True)
-def _clear_settings_cache() -> None:
+def _clear_caches() -> None:
+    from core.config import get_settings
+    from core.db import get_engine, get_sessionmaker
+
     get_settings.cache_clear()
+    get_engine.cache_clear()
+    get_sessionmaker.cache_clear()

@@ -21,13 +21,15 @@ router = Router()
 async def handle_start_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     if callback.data == "start_yes":
         await state.set_state(QualificationFSM.in_dialogue)
-        await callback.message.answer(  # type: ignore[union-attr]
-            "Отлично. Первый вопрос: какой у вас ориентировочный бюджет на маркетинг "
-            "в месяц (в рублях)?"
-        )
+        if isinstance(callback.message, Message):
+            await callback.message.answer(
+                "Отлично. Первый вопрос: какой у вас ориентировочный бюджет на маркетинг "
+                "в месяц (в рублях)?"
+            )
     else:
         await state.clear()
-        await callback.message.answer("Хорошо, обращайтесь когда будете готовы.")  # type: ignore[union-attr]
+        if isinstance(callback.message, Message):
+            await callback.message.answer("Хорошо, обращайтесь когда будете готовы.")
     await callback.answer()
 
 

@@ -21,39 +21,31 @@ def _make_mock_response(content: str) -> MagicMock:
     return response
 
 
-@pytest.fixture
-def llm_client(settings_test: object) -> LLMClient:
-    with patch("core.llm.get_settings") as mock_get_settings:
-        mock_get_settings.return_value = MagicMock(
-            deepseek_api_key="test-key",
-            deepseek_base_url="https://api.deepseek.com",
-            deepseek_model="deepseek-chat",
-        )
-        return LLMClient()
-
-
 @pytest.mark.asyncio
-async def test_chat_returns_string(llm_client: LLMClient) -> None:
+async def test_chat_returns_string() -> None:
     mock_response = _make_mock_response("Привет! Как могу помочь?")
 
-    with patch.object(
-        llm_client._client.chat.completions,
-        "create",
-        new_callable=AsyncMock,
-        return_value=mock_response,
-    ):
-        result = await llm_client.chat([{"role": "user", "content": "Привет"}])
+    with patch("core.llm.AsyncOpenAI") as mock_class:
+        mock_instance = mock_class.return_value
+        mock_instance.chat.completions.create = AsyncMock(return_value=mock_response)
+
+        client = LLMClient()
+        result = await client.chat([{"role": "user", "content": "Привет"}])
 
     assert result == "Привет! Как могу помочь?"
 
 
 @pytest.mark.asyncio
-async def test_chat_passes_temperature_and_max_tokens(llm_client: LLMClient) -> None:
+async def test_chat_passes_temperature_and_max_tokens() -> None:
     mock_response = _make_mock_response("OK")
     create_mock = AsyncMock(return_value=mock_response)
 
-    with patch.object(llm_client._client.chat.completions, "create", new=create_mock):
-        await llm_client.chat(
+    with patch("core.llm.AsyncOpenAI") as mock_class:
+        mock_instance = mock_class.return_value
+        mock_instance.chat.completions.create = create_mock
+
+        client = LLMClient()
+        await client.chat(
             [{"role": "user", "content": "test"}],
             temperature=0.7,
             max_tokens=500,
@@ -65,7 +57,7 @@ async def test_chat_passes_temperature_and_max_tokens(llm_client: LLMClient) -> 
 
 
 @pytest.mark.asyncio
-async def test_chat_structured_parses_verdict(llm_client: LLMClient) -> None:
+async def test_chat_structured_parses_verdict() -> None:
     verdict_json = """{
         "qualified": true,
         "budget_rub_monthly": 50000,
@@ -78,13 +70,12 @@ async def test_chat_structured_parses_verdict(llm_client: LLMClient) -> None:
     }"""
     mock_response = _make_mock_response(verdict_json)
 
-    with patch.object(
-        llm_client._client.chat.completions,
-        "create",
-        new_callable=AsyncMock,
-        return_value=mock_response,
-    ):
-        verdict = await llm_client.chat_structured(
+    with patch("core.llm.AsyncOpenAI") as mock_class:
+        mock_instance = mock_class.return_value
+        mock_instance.chat.completions.create = AsyncMock(return_value=mock_response)
+
+        client = LLMClient()
+        verdict = await client.chat_structured(
             [{"role": "user", "content": "..."}],
             QualifierVerdict,
         )
