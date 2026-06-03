@@ -1,6 +1,9 @@
 import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.config import Settings, get_settings
+from core.models import Base
 
 
 @pytest.fixture
@@ -28,3 +31,14 @@ def _clear_caches() -> None:
     get_settings.cache_clear()
     get_engine.cache_clear()
     get_sessionmaker.cache_clear()
+
+
+@pytest_asyncio.fixture
+async def db_session() -> AsyncSession:  # type: ignore[misc]
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with maker() as session:
+        yield session
+    await engine.dispose()

@@ -6,7 +6,6 @@ from fastapi import FastAPI
 
 from apps.api.routers import health, qualify
 from core.config import get_settings
-from core.db import init_db
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level.upper())
@@ -14,7 +13,6 @@ logging.basicConfig(level=settings.log_level.upper())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    await init_db()
     yield
 
 

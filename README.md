@@ -23,6 +23,9 @@ cp .env.example .env
 # Install dependencies
 make install
 
+# Apply database migrations
+uv run alembic upgrade head
+
 # Verify everything works
 make lint && make typecheck && make test
 
@@ -71,6 +74,19 @@ lead-filter-bot/
 └── Makefile
 ```
 
+## Database migrations
+
+```bash
+# Generate migration after model changes
+uv run alembic revision --autogenerate -m "your description"
+
+# Apply
+uv run alembic upgrade head
+
+# Rollback one step
+uv run alembic downgrade -1
+```
+
 ## API endpoints
 
 | Method | Path | Description |
@@ -81,7 +97,7 @@ lead-filter-bot/
 ## Roadmap
 
 - [x] Phase 1: project skeleton, DeepSeek integration, /start handler, /health
-- [ ] Phase 2: full qualification dialogue (FSM, 5-question flow, DB persistence)
+- [x] Phase 2: full qualification dialogue (FSM, 5-question flow, DB persistence, Alembic)
 - [ ] Phase 3: RAG over agency knowledge base via Qdrant
 - [ ] Phase 4: Docker production deploy, Postgres, Redis FSM storage, CI/CD
 - [ ] Phase 5: Tilda landing, Yandex.Metrica funnel, launch on Habr/VC.ru/Reddit
