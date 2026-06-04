@@ -5,8 +5,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from apps.bot.flow import StepConfig, process_turn
 from apps.bot.states import QualificationFSM
 from core.llm import LLMClient
+from core.rag import RagClient
 from core.schemas import NextStep
 from core.services.conversation import (
     add_message,
@@ -37,6 +39,37 @@ Q4_URGENCY = "Когда планируете начать — немедлен�
 Q5_EXPERIENCE = (
     "Был ли у вас опыт работы с диджитал-агентствами раньше? Если да — "
     "положительный или негативный?"
+)
+
+STEP_BUDGET = StepConfig(
+    current_question=Q1_BUDGET,
+    data_key="budget",
+    next_state=QualificationFSM.waiting_for_service_type,
+    next_question=Q2_SERVICE,
+)
+STEP_SERVICE = StepConfig(
+    current_question=Q2_SERVICE,
+    data_key="service",
+    next_state=QualificationFSM.waiting_for_business_stage,
+    next_question=Q3_STAGE,
+)
+STEP_STAGE = StepConfig(
+    current_question=Q3_STAGE,
+    data_key="stage",
+    next_state=QualificationFSM.waiting_for_urgency,
+    next_question=Q4_URGENCY,
+)
+STEP_URGENCY = StepConfig(
+    current_question=Q4_URGENCY,
+    data_key="urgency",
+    next_state=QualificationFSM.waiting_for_agency_experience,
+    next_question=Q5_EXPERIENCE,
+)
+STEP_EXPERIENCE = StepConfig(
+    current_question=Q5_EXPERIENCE,
+    data_key="experience",
+    next_state=None,
+    next_question=None,
 )
 
 
@@ -77,17 +110,9 @@ async def handle_budget(
     state: FSMContext,
     session_factory: async_sessionmaker[AsyncSession],
     llm: LLMClient,
+    rag: RagClient,
 ) -> None:
-    data = await state.get_data()
-    conv_id: int = data["conversation_id"]
-
-    async with session_factory() as session:
-        await add_message(session, conv_id, "user", message.text or "")
-        await add_message(session, conv_id, "assistant", Q2_SERVICE)
-
-    await state.update_data(budget=message.text)
-    await state.set_state(QualificationFSM.waiting_for_service_type)
-    await message.answer(Q2_SERVICE)
+    await process_turn(message, state, session_factory, llm, rag, STEP_BUDGET)
 
 
 @router.message(QualificationFSM.waiting_for_service_type)
@@ -96,17 +121,9 @@ async def handle_service_type(
     state: FSMContext,
     session_factory: async_sessionmaker[AsyncSession],
     llm: LLMClient,
+    rag: RagClient,
 ) -> None:
-    data = await state.get_data()
-    conv_id: int = data["conversation_id"]
-
-    async with session_factory() as session:
-        await add_message(session, conv_id, "user", message.text or "")
-        await add_message(session, conv_id, "assistant", Q3_STAGE)
-
-    await state.update_data(service=message.text)
-    await state.set_state(QualificationFSM.waiting_for_business_stage)
-    await message.answer(Q3_STAGE)
+    await process_turn(message, state, session_factory, llm, rag, STEP_SERVICE)
 
 
 @router.message(QualificationFSM.waiting_for_business_stage)
@@ -115,17 +132,9 @@ async def handle_business_stage(
     state: FSMContext,
     session_factory: async_sessionmaker[AsyncSession],
     llm: LLMClient,
+    rag: RagClient,
 ) -> None:
-    data = await state.get_data()
-    conv_id: int = data["conversation_id"]
-
-    async with session_factory() as session:
-        await add_message(session, conv_id, "user", message.text or "")
-        await add_message(session, conv_id, "assistant", Q4_URGENCY)
-
-    await state.update_data(stage=message.text)
-    await state.set_state(QualificationFSM.waiting_for_urgency)
-    await message.answer(Q4_URGENCY)
+    await process_turn(message, state, session_factory, llm, rag, STEP_STAGE)
 
 
 @router.message(QualificationFSM.waiting_for_urgency)
@@ -134,21 +143,25 @@ async def handle_urgency(
     state: FSMContext,
     session_factory: async_sessionmaker[AsyncSession],
     llm: LLMClient,
+    rag: RagClient,
 ) -> None:
-    data = await state.get_data()
-    conv_id: int = data["conversation_id"]
-
-    async with session_factory() as session:
-        await add_message(session, conv_id, "user", message.text or "")
-        await add_message(session, conv_id, "assistant", Q5_EXPERIENCE)
-
-    await state.update_data(urgency=message.text)
-    await state.set_state(QualificationFSM.waiting_for_agency_experience)
-    await message.answer(Q5_EXPERIENCE)
+    await process_turn(message, state, session_factory, llm, rag, STEP_URGENCY)
 
 
 @router.message(QualificationFSM.waiting_for_agency_experience)
 async def handle_agency_experience(
+    message: Message,
+    state: FSMContext,
+    session_factory: async_sessionmaker[AsyncSession],
+    llm: LLMClient,
+    rag: RagClient,
+) -> None:
+    answered = await process_turn(message, state, session_factory, llm, rag, STEP_EXPERIENCE)
+    if answered:
+        await _finalize_and_respond(message, state, session_factory, llm)
+
+
+async def _finalize_and_respond(
     message: Message,
     state: FSMContext,
     session_factory: async_sessionmaker[AsyncSession],
@@ -160,9 +173,7 @@ async def handle_agency_experience(
     service: str = data.get("service", "не указано")
     stage: str = data.get("stage", "не указано")
     urgency: str = data.get("urgency", "не указано")
-
-    async with session_factory() as session:
-        await add_message(session, conv_id, "user", message.text or "")
+    experience: str = data.get("experience", "не указано")
 
     await state.set_state(QualificationFSM.generating_verdict)
     await message.answer("Анализирую ваши ответы, секунду...")
@@ -173,7 +184,7 @@ async def handle_agency_experience(
         f"2. Тип услуги: {service}\n"
         f"3. Стадия бизнеса: {stage}\n"
         f"4. Срочность: {urgency}\n"
-        f"5. Опыт с агентствами: {message.text}\n\n"
+        f"5. Опыт с агентствами: {experience}\n\n"
         f"Выдай JSON-вердикт согласно правилам в системном промпте."
     )
 

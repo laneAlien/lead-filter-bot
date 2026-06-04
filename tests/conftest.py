@@ -17,6 +17,11 @@ def settings_test(monkeypatch: pytest.MonkeyPatch) -> Settings:
         database_url="sqlite+aiosqlite:///./test.db",
         log_level="WARNING",
         env="test",
+        qdrant_url="http://localhost:6333",
+        qdrant_collection="test_kb",
+        embedding_model="intfloat/multilingual-e5-small",
+        rag_top_k=4,
+        rag_score_threshold=0.0,
     )
     monkeypatch.setattr("core.config.get_settings", lambda: test_settings)
     get_settings.cache_clear()
@@ -27,10 +32,12 @@ def settings_test(monkeypatch: pytest.MonkeyPatch) -> Settings:
 def _clear_caches() -> None:
     from core.config import get_settings
     from core.db import get_engine, get_sessionmaker
+    from core.rag import get_embedder
 
     get_settings.cache_clear()
     get_engine.cache_clear()
     get_sessionmaker.cache_clear()
+    get_embedder.cache_clear()
 
 
 @pytest_asyncio.fixture

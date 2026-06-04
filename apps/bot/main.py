@@ -8,6 +8,7 @@ from apps.bot.handlers import dialogue, start
 from core.config import get_settings
 from core.db import get_sessionmaker
 from core.llm import LLMClient
+from core.rag import RagClient
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ async def _run() -> None:
     dp.workflow_data.update(
         session_factory=get_sessionmaker(),
         llm=LLMClient(),
+        rag=RagClient(),
     )
 
     logger.info("Starting bot polling...")

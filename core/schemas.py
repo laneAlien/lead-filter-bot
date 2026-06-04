@@ -4,6 +4,21 @@ from typing import Literal
 from pydantic import BaseModel
 
 
+class IntentType(StrEnum):
+    question = "question"
+    answer = "answer"
+
+
+class IntentResult(BaseModel):
+    intent: IntentType
+
+
+class RagChunk(BaseModel):
+    content: str
+    score: float
+    source: str
+
+
 class ServiceType(StrEnum):
     smm = "smm"
     context = "context"

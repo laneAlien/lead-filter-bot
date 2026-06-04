@@ -1,4 +1,4 @@
-.PHONY: install dev-bot dev-api test lint format typecheck
+.PHONY: install dev-bot dev-api test lint format typecheck index
 
 install:
 	uv sync --all-extras
@@ -20,3 +20,6 @@ format:
 
 typecheck:
 	uv run mypy core/
+
+index:
+	uv run python scripts/index_kb.py
