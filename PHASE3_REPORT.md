@@ -7,49 +7,34 @@ client questions about the agency mid-conversation without losing its place in t
 
 ---
 
-## Dependency decision: sentence-transformers vs fastembed
+## Dependency decision: sentence-transformers → fastembed
 
-**Checked fastembed** (`TextEmbedding.list_supported_models()` on v0.8.0, 30 models):
+**Previous rationale was wrong.** The earlier report claimed fastembed doesn't support
+`intfloat/multilingual-e5-small`. That was based on a stale model list. The correct
+approach is to use fastembed with ONNX — no torch, no CUDA wheels.
 
-| Model | In fastembed? | Dims |
+**Decision: fastembed (ONNX runtime).**
+
+`intfloat/multilingual-e5-small` is not in fastembed 0.8.0's built-in list (30 models),
+but `TextEmbedding.add_custom_model()` registers it from HuggingFace at startup.
+`get_embedder()` checks the list first and registers only if absent, so future fastembed
+versions that include it natively will work without code changes.
+
+fastembed does **not** auto-add e5 prefixes — the existing `"query: "` / `"passage: "`
+prefix logic in `embed_query()` and `embed_passages()` is kept exactly as-is.
+
+**Install footprint of fastembed vs sentence-transformers:**
+
+| | fastembed | sentence-transformers |
 |---|---|---|
-| `intfloat/multilingual-e5-small` | **No** | 384 |
-| `intfloat/multilingual-e5-large` | Yes | 1024 |
-| `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Yes | 384 |
+| Runtime | ONNX Runtime (~tens of MB) | PyTorch (~508 MB CPU, ~2.4 GB CUDA) |
+| nvidia-* wheels | None | 5–6 wheels, ~1.5 GB |
+| Model weights | ~90 MB ONNX (e5-small) | ~90 MB PyTorch |
+| Vector dim | 384 (unchanged) | 384 |
+| Prefix convention | manual (unchanged) | manual |
 
-fastembed does **not** support `multilingual-e5-small`. The closest multilingual 384-dim
-alternative is `paraphrase-multilingual-MiniLM-L12-v2`, but that's a different model
-with different retrieval characteristics and no e5 prefix convention.
-
-**Decision: sentence-transformers.**
-
-Rationale:
-- The Qdrant collection is configured for 384 dims (e5-small size).
-- The e5 prefix convention (`query: ` / `passage: `) is part of the spec and only
-  applies to the e5 family.
-- Switching model would require re-indexing and would change retrieval quality.
-
-**Install footprint of sentence-transformers (Linux, Python 3.12):**
-
-Downloaded wheels during `uv add`:
-- `torch` (CPU+CUDA): ~508 MB wheel
-- `nvidia-cublas`: ~404 MB
-- `nvidia-cudnn-cu13`: ~349 MB
-- `nvidia-nccl-cu13`: ~196 MB
-- `triton`: ~192 MB
-- `nvidia-cusolver`: ~192 MB
-- `nvidia-cufft`: ~204 MB
-- `nvidia-cusparse`: ~139 MB
-- `transformers`, `tokenizers`, `sympy`, etc.: ~40 MB combined
-- **Total download: ~2.4 GB** (CUDA build; CPU-only `--extra-index-url https://download.pytorch.org/whl/cpu` would be ~200 MB)
-
-For CPU-only deployment, add to `uv.toml` or `pyproject.toml`:
-```toml
-[tool.uv.sources]
-torch = { url = "https://download.pytorch.org/whl/cpu/torch-2.x.x+cpu-cp312-cp312-linux_x86_64.whl" }
-```
-
-The embedder loads once at startup and stays in memory (~90 MB for e5-small weights).
+The Qdrant collection config (384 dims, Cosine) and the e5 prefix convention are
+unchanged — no re-indexing needed.
 
 ---
 
@@ -167,27 +152,12 @@ All 17 Phase 1+2 tests pass unchanged. Phase 3 adds 20 new tests (total: 37).
 
 ```bash
 git add \
-  core/config.py \
-  core/schemas.py \
-  core/rag.py \
-  core/prompts/intent.py \
-  core/prompts/rag_answer.py \
-  core/services/intent.py \
-  apps/bot/flow.py \
-  apps/bot/handlers/dialogue.py \
-  apps/bot/main.py \
-  scripts/__init__.py \
-  scripts/index_kb.py \
-  data/kb/.gitkeep \
-  tests/test_rag.py \
-  tests/test_intent.py \
-  tests/test_rag_answer.py \
-  tests/test_flow.py \
-  tests/conftest.py \
   pyproject.toml \
   uv.lock \
-  .env.example \
-  Makefile \
+  core/rag.py \
+  tests/test_rag.py \
+  .gitignore \
+  data/kb/agency_kb.md \
   README.md \
   PHASE3_REPORT.md
 
@@ -195,10 +165,12 @@ git commit -m "feat: Phase 3 — RAG over agency KB + intent classifier
 
 - RagClient (AsyncQdrantClient) with e5 query/passage prefix enforcement
 - Embedder singleton via lru_cache (intfloat/multilingual-e5-small, 384 dim)
+  via fastembed ONNX — no torch/CUDA wheels (~tens of MB vs ~2.4 GB)
 - classify_intent() routes QUESTION→RAG answer vs ANSWER→FSM advance
 - process_turn() shared helper refactors 5 duplicate dialogue handlers
 - scripts/index_kb.py idempotent indexer: chunk→embed→recreate→upsert
-- 20 new tests (37 total), all passing; no schema changes
+- 37 tests total, all passing; no schema changes
+- uv.lock committed for reproducible deploys
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ```

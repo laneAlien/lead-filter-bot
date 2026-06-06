@@ -1,8 +1,11 @@
-"""RAG layer: sentence-transformers embedder + Qdrant client.
+"""RAG layer: fastembed embedder (ONNX, no torch) + Qdrant client.
 
 E5 prefix convention (CRITICAL — skipping silently wrecks retrieval):
   - Queries  → "query: <text>"
   - Passages → "passage: <text>"
+
+fastembed does NOT auto-add these prefixes — they are applied manually in
+embed_query() and embed_passages() and must not be removed.
 """
 
 from __future__ import annotations
@@ -11,10 +14,10 @@ import logging
 from functools import lru_cache
 from typing import Any
 
+import numpy as np
 from qdrant_client import AsyncQdrantClient, QdrantClient
-from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.http.models import Distance, PointStruct, VectorParams
-from qdrant_client.http.models import QueryResponse
+from qdrant_client.models import QueryResponse
 
 from core.config import get_settings
 from core.schemas import RagChunk
@@ -25,19 +28,35 @@ _VECTOR_SIZE = 384  # intfloat/multilingual-e5-small output dimension
 
 
 @lru_cache(maxsize=1)
-def get_embedder() -> Any:  # SentenceTransformer; typed as Any — ignore_missing_imports handles it
-    from sentence_transformers import SentenceTransformer
+def get_embedder() -> Any:  # fastembed TextEmbedding; Any because ignore_missing_imports
+    from fastembed import TextEmbedding
+    from fastembed.common.model_description import ModelSource, PoolingType
 
     settings = get_settings()
-    logger.info("Loading embedding model: %s", settings.embedding_model)
-    return SentenceTransformer(settings.embedding_model)
+    model_name = settings.embedding_model
+    logger.info("Loading embedding model: %s", model_name)
+
+    supported = {m["model"] for m in TextEmbedding.list_supported_models()}
+    if model_name not in supported:
+        # Register the model so fastembed can download its ONNX artifact from HF.
+        TextEmbedding.add_custom_model(
+            model=model_name,
+            pooling=PoolingType.MEAN,
+            normalization=True,
+            sources=ModelSource(hf=model_name),
+            dim=_VECTOR_SIZE,
+            model_file="onnx/model.onnx",
+        )
+
+    return TextEmbedding(model_name=model_name)
 
 
 def _embed(texts: list[str]) -> list[list[float]]:
+    """Internal encode seam: call fastembed and return L2-normalised float lists."""
     embedder: Any = get_embedder()
-    raw: Any = embedder.encode(texts, normalize_embeddings=True)
-    result: list[list[float]] = raw.tolist()
-    return result
+    # fastembed .embed() returns a generator of np.ndarray; materialise it.
+    raw: list[Any] = list(embedder.embed(texts))
+    return [np.asarray(vec).tolist() for vec in raw]
 
 
 def embed_query(text: str) -> list[float]:
@@ -142,9 +161,6 @@ class RagClient:
                     )
                 )
             return chunks
-        except (ConnectionError, UnexpectedResponse, OSError):
-            logger.warning("Qdrant search failed (connection/response error), returning []")
-            return []
         except Exception:
-            logger.warning("Qdrant search failed (unexpected error), returning []")
+            logger.warning("Qdrant search failed, returning []", exc_info=True)
             return []

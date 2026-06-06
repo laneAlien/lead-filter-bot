@@ -210,7 +210,6 @@ tempCodeRunnerFile.py
 qdrant_storage/
 *.db
 dev.db
-uv.lock
 
 # PyPI configuration file
 .pypirc

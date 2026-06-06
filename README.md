@@ -8,7 +8,7 @@ and prior agency experience.
 
 ## Stack
 
-Python 3.12 · aiogram 3 · FastAPI · DeepSeek · SQLAlchemy 2.0 · Qdrant · sentence-transformers · Docker
+Python 3.12 · aiogram 3 · FastAPI · DeepSeek · SQLAlchemy 2.0 · Qdrant · fastembed (ONNX) · Docker
 
 ## Quick start
 
