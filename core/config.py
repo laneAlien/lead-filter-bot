@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     env: str = "development"
 
+    redis_url: str = "redis://localhost:6379/0"
+
     # RAG / Qdrant
     qdrant_url: str = "http://10.42.0.19:6333"
     qdrant_api_key: str = ""

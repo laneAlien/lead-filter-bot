@@ -126,6 +126,35 @@ Skipping this silently degrades retrieval quality. The code enforces this in
 
 Both steps fail safe: Qdrant unreachable → `[]`, intent classifier error → treat as `ANSWER`.
 
+## Production deploy (Aeza)
+
+Stack on VPS: `bot` + `redis`. Postgres runs in homelab (10.42.0.20:5432) and Qdrant at
+10.42.0.19 — both reached over WireGuard. The image is built on the VPS itself.
+
+```bash
+# 1. Pull latest code
+git pull
+
+# 2. Fill secrets (first time only — never commit this file)
+cp .env.example .env
+# Set: TELEGRAM_BOT_TOKEN, DEEPSEEK_API_KEY, DATABASE_URL (postgresql+asyncpg://...),
+#      QDRANT_API_KEY, REDIS_URL=redis://redis:6379/0
+
+# 3. Build and start
+docker compose up -d --build
+
+# 4. Tail logs
+docker compose logs -f bot
+```
+
+**Migrations**: the bot entrypoint runs `alembic upgrade head` before starting. It is
+idempotent — safe when the schema is already current. On first deploy it applies the
+migration to Postgres; on restarts it exits immediately with no changes.
+
+**Restart**: `docker compose restart bot` — Redis state is preserved in the named volume.
+
+---
+
 ## Database migrations
 
 ```bash

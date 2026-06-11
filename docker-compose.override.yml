@@ -1,0 +1,7 @@
+services:
+  bot:
+    volumes:
+      - .:/app
+      - /app/.venv
+    environment:
+      DATABASE_URL: "sqlite+aiosqlite:////app/dev.db"
