@@ -1,5 +1,5 @@
 # ── builder: install deps into an isolated venv ───────────────────────────────
-FROM ghcr.io/astral-sh/uv:python3.12-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 WORKDIR /app
 
