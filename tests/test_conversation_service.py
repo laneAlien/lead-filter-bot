@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models import Conversation, User
+from core.models import Conversation, Message, User
 from core.prompts.qualifier import QUALIFIER_SYSTEM_PROMPT
 from core.schemas import (
     AgencyExperience,
@@ -120,3 +120,23 @@ async def test_finalize_conversation_persists_verdict(db_session: AsyncSession) 
     assert updated.verdict_json is not None
     assert updated.qualified == SAMPLE_VERDICT.qualified
     assert updated.finished_at is not None
+    # Regression guard: finalize must commit a timezone-aware datetime without
+    # raising. A naive TIMESTAMP column made asyncpg raise DataError here, which
+    # silently hung the dialogue on "Анализирую...".
+    assert updated.finished_at.tzinfo is not None
+
+
+def test_timestamp_columns_are_timezone_aware() -> None:
+    """All timestamp columns must be timezone-aware (TIMESTAMP WITH TIME ZONE).
+
+    The code writes tz-aware ``datetime.now(UTC)``; naive columns make asyncpg
+    raise DataError on commit. This pins the schema side of that contract.
+    """
+    columns = [
+        User.__table__.c.created_at,
+        Conversation.__table__.c.started_at,
+        Conversation.__table__.c.finished_at,
+        Message.__table__.c.created_at,
+    ]
+    for column in columns:
+        assert column.type.timezone is True, f"{column} must be timezone-aware"

@@ -178,38 +178,47 @@ async def _finalize_and_respond(
     await state.set_state(QualificationFSM.generating_verdict)
     await message.answer("Анализирую ваши ответы, секунду...")
 
-    dialogue_summary = (
-        f"Ответы клиента на квалификационные вопросы:\n\n"
-        f"1. Бюджет на месяц: {budget}\n"
-        f"2. Тип услуги: {service}\n"
-        f"3. Стадия бизнеса: {stage}\n"
-        f"4. Срочность: {urgency}\n"
-        f"5. Опыт с агентствами: {experience}\n\n"
-        f"Выдай JSON-вердикт согласно правилам в системном промпте."
-    )
-
-    verdict = await generate_verdict(llm, dialogue_summary)
-
-    async with session_factory() as session:
-        await finalize_conversation(session, conv_id, verdict)
-
-    if verdict.qualified and verdict.next_step == NextStep.book_call:
-        text = (
-            "Спасибо за ответы. По параметрам подходим друг другу.\n\n"
-            "Менеджер свяжется с вами в ближайший рабочий день. "
-            f"ID заявки: #{conv_id}"
-        )
-    elif verdict.next_step == NextStep.needs_clarification:
-        text = (
-            "Спасибо за ответы. Менеджер свяжется с вами для уточнения деталей. "
-            f"ID заявки: #{conv_id}"
-        )
-    else:
-        text = (
-            "Спасибо за время. Похоже, наш формат сейчас вам не подойдёт.\n\n"
-            f"{verdict.reasoning}\n\n"
-            "Если ситуация изменится — будем рады поговорить позже."
+    try:
+        dialogue_summary = (
+            f"Ответы клиента на квалификационные вопросы:\n\n"
+            f"1. Бюджет на месяц: {budget}\n"
+            f"2. Тип услуги: {service}\n"
+            f"3. Стадия бизнеса: {stage}\n"
+            f"4. Срочность: {urgency}\n"
+            f"5. Опыт с агентствами: {experience}\n\n"
+            f"Выдай JSON-вердикт согласно правилам в системном промпте."
         )
 
-    await message.answer(text)
-    await state.clear()
+        verdict = await generate_verdict(llm, dialogue_summary)
+
+        async with session_factory() as session:
+            await finalize_conversation(session, conv_id, verdict)
+
+        if verdict.qualified and verdict.next_step == NextStep.book_call:
+            text = (
+                "Спасибо за ответы. По параметрам подходим друг другу.\n\n"
+                "Менеджер свяжется с вами в ближайший рабочий день. "
+                f"ID заявки: #{conv_id}"
+            )
+        elif verdict.next_step == NextStep.needs_clarification:
+            text = (
+                "Спасибо за ответы. Менеджер свяжется с вами для уточнения деталей. "
+                f"ID заявки: #{conv_id}"
+            )
+        else:
+            text = (
+                "Спасибо за время. Похоже, наш формат сейчас вам не подойдёт.\n\n"
+                f"{verdict.reasoning}\n\n"
+                "Если ситуация изменится — будем рады поговорить позже."
+            )
+
+        await message.answer(text)
+    except Exception:
+        # Never leave the user hanging on "Анализирую...". Log with traceback,
+        # tell them plainly, and reset FSM so /start works cleanly.
+        logger.exception("Finalization failed for conversation_id=%s", conv_id)
+        await message.answer(
+            "Что-то пошло не так при обработке заявки. Попробуйте начать заново: /start"
+        )
+    finally:
+        await state.clear()
