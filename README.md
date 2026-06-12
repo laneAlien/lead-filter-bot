@@ -131,6 +131,17 @@ Both steps fail safe: Qdrant unreachable → `[]`, intent classifier error → t
 Stack on VPS: `bot` + `redis`. Postgres runs in homelab (10.42.0.20:5432) and Qdrant at
 10.42.0.19 — both reached over WireGuard. The image is built on the VPS itself.
 
+The bot runs with `network_mode: host` because Aeza blocks outbound port 53 for NAT'd
+container traffic, which breaks Docker's embedded DNS resolver. Host networking lets the
+bot resolve and reach the Telegram/DeepSeek APIs exactly like the host does. As a result,
+Redis is published on `127.0.0.1:6379` and the bot reaches it there (not via the `redis`
+service name).
+
+> **Important:** production must bypass `docker-compose.override.yml` — that file is a
+> local-dev override (source bind-mount) and is auto-loaded by a bare `docker-compose up`.
+> Always pass `-f docker-compose.yml` explicitly on the VPS so only the base prod config
+> applies.
+
 ```bash
 # 1. Pull latest code
 git pull
@@ -138,20 +149,21 @@ git pull
 # 2. Fill secrets (first time only — never commit this file)
 cp .env.example .env
 # Set: TELEGRAM_BOT_TOKEN, DEEPSEEK_API_KEY, DATABASE_URL (postgresql+asyncpg://...),
-#      QDRANT_API_KEY, REDIS_URL=redis://redis:6379/0
+#      QDRANT_API_KEY, REDIS_URL=redis://127.0.0.1:6379/0   # host-net → localhost, not "redis"
 
-# 3. Build and start
-docker compose up -d --build
+# 3. Build and start (explicit -f bypasses the dev override)
+docker-compose -f docker-compose.yml up -d --build
 
 # 4. Tail logs
-docker compose logs -f bot
+docker-compose -f docker-compose.yml logs -f bot
 ```
 
 **Migrations**: the bot entrypoint runs `alembic upgrade head` before starting. It is
 idempotent — safe when the schema is already current. On first deploy it applies the
 migration to Postgres; on restarts it exits immediately with no changes.
 
-**Restart**: `docker compose restart bot` — Redis state is preserved in the named volume.
+**Restart**: `docker-compose -f docker-compose.yml restart bot` — Redis state is preserved
+in the named volume.
 
 ---
 

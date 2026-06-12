@@ -1,7 +1,10 @@
+# LOCAL DEV ONLY (e.g. workstation 208) — do NOT use in production.
+# docker-compose auto-loads this file on plain `docker-compose up`. It mounts the
+# working tree into the container for live code reload. On the Aeza prod VPS the
+# bot runs from the baked image with network_mode: host, so production deploys
+# MUST bypass this override:  docker-compose -f docker-compose.yml up -d
 services:
   bot:
     volumes:
       - .:/app
       - /app/.venv
-    environment:
-      DATABASE_URL: "sqlite+aiosqlite:////app/dev.db"
