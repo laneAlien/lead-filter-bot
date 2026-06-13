@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 
 from apps.bot.handlers import dialogue, fallback, start
+from apps.bot.middleware.user_lock import PerUserLockMiddleware
 from core.config import get_settings
 from core.db import get_sessionmaker
 from core.llm import LLMClient
@@ -19,6 +20,8 @@ async def _run() -> None:
 
     bot = Bot(token=settings.telegram_bot_token)
     dp = Dispatcher(storage=RedisStorage.from_url(settings.redis_url))
+
+    dp.message.middleware(PerUserLockMiddleware())
 
     dp.include_router(start.router)
     dp.include_router(dialogue.router)
