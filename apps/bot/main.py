@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 
-from apps.bot.handlers import dialogue, start
+from apps.bot.handlers import dialogue, fallback, start
 from core.config import get_settings
 from core.db import get_sessionmaker
 from core.llm import LLMClient
@@ -22,6 +22,7 @@ async def _run() -> None:
 
     dp.include_router(start.router)
     dp.include_router(dialogue.router)
+    dp.include_router(fallback.router)
 
     dp.workflow_data.update(
         session_factory=get_sessionmaker(),

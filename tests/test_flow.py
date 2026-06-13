@@ -194,6 +194,61 @@ async def test_answer_last_step_does_not_advance_state() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Compound message (answer + embedded question)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_compound_message_advances_fsm_and_sends_rag() -> None:
+    """Answer part advances FSM; embedded question triggers a RAG reply before the next prompt."""
+    message = _make_message("немедленно, а сколько стоит таргет?")
+    state = _make_state()
+    session_factory = _make_session_factory()
+    llm = _make_llm()
+    rag = _make_rag()
+
+    with (
+        patch("apps.bot.flow.classify_intent", new=AsyncMock(return_value=IntentType.answer)),
+        patch(
+            "apps.bot.flow.answer_question",
+            new=AsyncMock(return_value="Стоимость таргета от 30 000 ₽."),
+        ) as mock_aq,
+    ):
+        result = await process_turn(message, state, session_factory, llm, rag, STEP_A)
+
+    assert result is True
+    state.set_state.assert_awaited_once_with(_TestFSM.step_b)
+    state.update_data.assert_awaited_once()
+    mock_aq.assert_awaited_once()
+    # RAG answer sent first, then the next FSM question
+    assert message.answer.call_count == 2
+    calls = [c.args[0] for c in message.answer.call_args_list]
+    assert calls[0] == "Стоимость таргета от 30 000 ₽."
+    assert calls[1] == STEP_A.next_question
+
+
+@pytest.mark.asyncio
+async def test_trailing_confirmation_does_not_trigger_rag() -> None:
+    """A short trailing '?' like 'ок?' must not fire a RAG lookup."""
+    message = _make_message("50 тысяч, ок?")
+    state = _make_state()
+    session_factory = _make_session_factory()
+    llm = _make_llm()
+    rag = _make_rag()
+
+    with (
+        patch("apps.bot.flow.classify_intent", new=AsyncMock(return_value=IntentType.answer)),
+        patch("apps.bot.flow.answer_question", new=AsyncMock()) as mock_aq,
+    ):
+        result = await process_turn(message, state, session_factory, llm, rag, STEP_A)
+
+    assert result is True
+    mock_aq.assert_not_called()
+    # Only the next FSM question — no RAG message
+    message.answer.assert_awaited_once_with(STEP_A.next_question)
+
+
+# ---------------------------------------------------------------------------
 # RAG failure robustness
 # ---------------------------------------------------------------------------
 
