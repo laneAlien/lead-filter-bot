@@ -22,6 +22,17 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 
+
+def _validate_budget(text: str) -> bool:
+    """Budget answer must contain at least one digit."""
+    return any(c.isdigit() for c in text)
+
+
+def _validate_text(text: str) -> bool:
+    """General text answer must be at least 2 characters (catches lone-key-press garbage)."""
+    return len(text.strip()) >= 2
+
+
 GREETING = (
     "Привет! Я квалифицирую заявки в digital-агентство. "
     "Задам несколько коротких вопросов про вашу задачу, это займёт 2-3 минуты."
@@ -46,30 +57,35 @@ STEP_BUDGET = StepConfig(
     data_key="budget",
     next_state=QualificationFSM.waiting_for_service_type,
     next_question=Q2_SERVICE,
+    validator=_validate_budget,
 )
 STEP_SERVICE = StepConfig(
     current_question=Q2_SERVICE,
     data_key="service",
     next_state=QualificationFSM.waiting_for_business_stage,
     next_question=Q3_STAGE,
+    validator=_validate_text,
 )
 STEP_STAGE = StepConfig(
     current_question=Q3_STAGE,
     data_key="stage",
     next_state=QualificationFSM.waiting_for_urgency,
     next_question=Q4_URGENCY,
+    validator=_validate_text,
 )
 STEP_URGENCY = StepConfig(
     current_question=Q4_URGENCY,
     data_key="urgency",
     next_state=QualificationFSM.waiting_for_agency_experience,
     next_question=Q5_EXPERIENCE,
+    validator=_validate_text,
 )
 STEP_EXPERIENCE = StepConfig(
     current_question=Q5_EXPERIENCE,
     data_key="experience",
     next_state=None,
     next_question=None,
+    validator=_validate_text,
 )
 
 
