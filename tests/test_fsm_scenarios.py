@@ -177,9 +177,7 @@ async def test_s2_question_sends_rag_then_current_question() -> None:
         result = await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
     assert result is False
-    assert message.answer.call_count == 2, (
-        f"Expected 2 messages, got {message.answer.call_count}"
-    )
+    assert message.answer.call_count == 2, f"Expected 2 messages, got {message.answer.call_count}"
     sent = [c.args[0] for c in message.answer.call_args_list]
     assert sent[0] == "Да, работаем.", "RAG reply must come first"
     assert sent[1] == STEP_MID.current_question, "Current question must be re-asked second"
@@ -215,11 +213,7 @@ async def test_s2_current_question_re_asked_exactly_once() -> None:
     ):
         await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
-    count = sum(
-        1
-        for c in message.answer.call_args_list
-        if c.args[0] == STEP_MID.current_question
-    )
+    count = sum(1 for c in message.answer.call_args_list if c.args[0] == STEP_MID.current_question)
     assert count == 1, f"Expected current question sent exactly once, got {count}"
 
 
@@ -245,9 +239,7 @@ async def test_s3_compound_sends_rag_then_next_question() -> None:
 
     assert result is True
     sent = [c.args[0] for c in message.answer.call_args_list]
-    assert len(sent) == 2, (
-        f"Expected 2 messages (RAG + next_q), got {len(sent)}: {sent}"
-    )
+    assert len(sent) == 2, f"Expected 2 messages (RAG + next_q), got {len(sent)}: {sent}"
     assert sent[0] == "Таргет от 30 000 ₽.", "RAG reply must come first"
     assert sent[1] == STEP_MID.next_question, "Next question must come second"
 
@@ -407,9 +399,7 @@ async def test_s5_emoji_only_at_budget_step_expected_rereask() -> None:
         patch("apps.bot.flow.classify_intent", new=AsyncMock()) as mock_ci,
         patch("apps.bot.flow.add_message", new=AsyncMock()),
     ):
-        result = await process_turn(
-            message, state, _session_factory(), _llm(), _rag(), STEP_MID
-        )
+        result = await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
     assert result is False
     mock_ci.assert_not_called()  # early guard fires before LLM call
@@ -514,9 +504,7 @@ async def test_s7_question_after_fsm_sends_rag_then_start_nudge() -> None:
     ):
         await handle_no_state(message, _llm(), _rag())
 
-    assert message.answer.call_count == 2, (
-        f"Expected 2 messages, got {message.answer.call_count}"
-    )
+    assert message.answer.call_count == 2, f"Expected 2 messages, got {message.answer.call_count}"
     sent = [c.args[0] for c in message.answer.call_args_list]
     assert sent[0] == "Да, SEO можно заказать отдельно.", "RAG reply must come first"
     assert "/start" in sent[1], f"Second message must contain /start nudge, got: {sent[1]!r}"
@@ -560,9 +548,7 @@ async def test_s8_empty_string_does_not_crash() -> None:
         patch("apps.bot.flow.classify_intent", new=AsyncMock(return_value=IntentType.answer)),
         patch("apps.bot.flow.add_message", new=AsyncMock()),
     ):
-        result = await process_turn(
-            message, state, _session_factory(), _llm(), _rag(), STEP_MID
-        )
+        result = await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
     assert isinstance(result, bool)
 
@@ -579,9 +565,7 @@ async def test_s8_none_text_does_not_crash() -> None:
         patch("apps.bot.flow.classify_intent", new=AsyncMock(return_value=IntentType.answer)),
         patch("apps.bot.flow.add_message", new=AsyncMock()),
     ):
-        result = await process_turn(
-            message, state, _session_factory(), _llm(), _rag(), STEP_MID
-        )
+        result = await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
     assert isinstance(result, bool)
 
@@ -596,9 +580,7 @@ async def test_s8_emoji_only_does_not_crash() -> None:
         patch("apps.bot.flow.classify_intent", new=AsyncMock(return_value=IntentType.answer)),
         patch("apps.bot.flow.add_message", new=AsyncMock()),
     ):
-        result = await process_turn(
-            message, state, _session_factory(), _llm(), _rag(), STEP_MID
-        )
+        result = await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
     assert isinstance(result, bool)
 
@@ -617,9 +599,7 @@ async def test_s8_empty_message_gentle_rereask() -> None:
         patch("apps.bot.flow.classify_intent", new=AsyncMock()) as mock_ci,
         patch("apps.bot.flow.add_message", new=AsyncMock()),
     ):
-        result = await process_turn(
-            message, state, _session_factory(), _llm(), _rag(), STEP_MID
-        )
+        result = await process_turn(message, state, _session_factory(), _llm(), _rag(), STEP_MID)
 
     assert result is False
     mock_ci.assert_not_called()
