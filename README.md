@@ -58,15 +58,22 @@ make dev-bot
 lead-filter-bot/
 ├── apps/
 │   ├── bot/              # aiogram process
-│   │   ├── handlers/     # /start and dialogue FSM handlers
+│   │   ├── main.py       # entrypoint: Dispatcher, RedisStorage, middleware wiring
+│   │   ├── flow.py       # shared per-turn router (intent → RAG or advance)
 │   │   ├── states.py     # FSM state definitions
-│   │   └── keyboards.py  # inline keyboards
+│   │   ├── keyboards.py  # inline keyboards
+│   │   ├── handlers/
+│   │   │   ├── start.py    # /start command
+│   │   │   ├── dialogue.py # 5 FSM step handlers + validators
+│   │   │   └── fallback.py # post-FSM question handler (StateFilter(None))
+│   │   └── middleware/
+│   │       └── user_lock.py # PerUserLockMiddleware: serializes messages per user
 │   └── api/              # FastAPI process
-│       └── routers/      # health, qualify endpoints
-├── apps/
-│   └── bot/
-│       ├── flow.py       # shared per-turn router (intent → RAG or advance)
-│       └── ...
+│       ├── main.py       # app + router mounting
+│       ├── deps.py       # get_db() session dependency
+│       └── routers/
+│           ├── health.py   # GET /health
+│           └── qualify.py  # GET /qualify/ping
 ├── core/                 # shared library
 │   ├── config.py         # pydantic-settings
 │   ├── llm.py            # DeepSeek client wrapper
@@ -149,8 +156,9 @@ cp .env.example .env
 # Set: TELEGRAM_BOT_TOKEN, DEEPSEEK_API_KEY, DATABASE_URL (postgresql+asyncpg://...),
 #      QDRANT_API_KEY, REDIS_URL=redis://127.0.0.1:6379/0   # host-net → localhost, not "redis"
 
-# 3. Build and start (explicit -f bypasses the dev override)
-docker-compose -f docker-compose.yml up -d --build
+# 3. Build and start (explicit -f bypasses the dev override; --force-recreate
+#    ensures the container actually picks up code-only changes)
+docker-compose -f docker-compose.yml up -d --force-recreate --build bot
 
 # 4. Tail logs
 docker-compose -f docker-compose.yml logs -f bot
@@ -183,7 +191,11 @@ uv run alembic downgrade -1
 - [x] Phase 1: project skeleton, DeepSeek integration, /start handler, /health
 - [x] Phase 2: full qualification dialogue (FSM, 5-question flow, DB persistence, Alembic)
 - [x] Phase 3: RAG over agency knowledge base via Qdrant + intent classifier
-- [ ] Phase 4: Docker production deploy, Postgres, Redis FSM storage, CI/CD
+- [x] Phase 3.5: dialogue hardening — per-user lock middleware (race protection),
+      input validation guards, compound-message handling, post-FSM fallback handler,
+      66-test behavior matrix
+- [x] Phase 4: Docker production deploy, Postgres, Redis FSM storage (live on Aeza)
+- [ ] Phase 4b: CI/CD (pending)
 - [ ] Phase 5: Tilda landing, Yandex.Metrica funnel, launch on Habr/VC.ru/Reddit
 
 ## License
