@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # RAG / Qdrant
-    qdrant_url: str = "http://10.42.0.19:6333"
+    qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
     qdrant_collection: str = "kontur_kb"
     embedding_model: str = "intfloat/multilingual-e5-small"

@@ -126,8 +126,8 @@ Both steps fail safe: Qdrant unreachable → `[]`, intent classifier error → t
 
 ## Production deploy (Aeza)
 
-Stack on VPS: `bot` + `redis`. Postgres runs in homelab (10.42.0.20:5432) and Qdrant at
-10.42.0.19 — both reached over WireGuard. The image is built on the VPS itself.
+Stack on VPS: `bot` + `redis`. In production, Postgres and Qdrant run in a private network,
+reached by the bot over a WireGuard tunnel. The image is built on the VPS itself.
 
 The bot runs with `network_mode: host` because Aeza blocks outbound port 53 for NAT'd
 container traffic, which breaks Docker's embedded DNS resolver. Host networking lets the
