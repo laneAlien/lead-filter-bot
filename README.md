@@ -4,8 +4,6 @@ AI-powered Telegram bot for digital agencies — qualifies inbound leads via
 DeepSeek-driven dialogue, filters by budget, scope, business stage, urgency,
 and prior agency experience.
 
-🚧 Building in public. Following progress: [LinkedIn URL placeholder]
-
 ## Stack
 
 Python 3.12 · aiogram 3 · FastAPI · DeepSeek · SQLAlchemy 2.0 · Qdrant · fastembed (ONNX) · Docker
@@ -47,7 +45,7 @@ make dev-bot
 | `DATABASE_URL` | SQLAlchemy async URL (default: `sqlite+aiosqlite:///./dev.db`) |
 | `LOG_LEVEL` | Logging level (default: `INFO`) |
 | `ENV` | Environment name (default: `development`) |
-| `QDRANT_URL` | Qdrant endpoint (default: `http://10.42.0.19:6333`) |
+| `QDRANT_URL` | Qdrant endpoint (default: `http://localhost:6333`) |
 | `QDRANT_API_KEY` | Qdrant API key if auth enabled (default: empty) |
 | `QDRANT_COLLECTION` | Collection name (default: `kontur_kb`) |
 | `EMBEDDING_MODEL` | HuggingFace model ID (default: `intfloat/multilingual-e5-small`) |
@@ -110,7 +108,7 @@ Every query must be prefixed with `"query: "` and every indexed passage with `"p
 Skipping this silently degrades retrieval quality. The code enforces this in
 `core/rag.py::embed_query` and `embed_passages`.
 
-**Qdrant:** running at `http://10.42.0.19:6333`, collection `kontur_kb`, vector size 384, Cosine distance.
+**Qdrant:** running at `http://localhost:6333`, collection `kontur_kb`, vector size 384, Cosine distance.
 
 **Indexing the knowledge base:**
 
