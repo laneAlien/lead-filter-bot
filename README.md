@@ -1,5 +1,7 @@
 # lead-filter-bot
 
+[English](README.md) · [Русский](README.ru.md)
+
 AI-powered Telegram bot for digital agencies — qualifies inbound leads via
 DeepSeek-driven dialogue, filters by budget, scope, business stage, urgency,
 and prior agency experience.
