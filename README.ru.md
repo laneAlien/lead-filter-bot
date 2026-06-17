@@ -16,23 +16,23 @@ Python 3.12 · aiogram 3 · FastAPI · DeepSeek · SQLAlchemy 2.0 · Qdrant · f
 git clone https://github.com/laneAlien/lead-filter-bot.git
 cd lead-filter-bot
 
-# Copy and fill environment variables
+# Скопировать и заполнить переменные окружения
 cp .env.example .env
-# Edit .env: set DEEPSEEK_API_KEY and TELEGRAM_BOT_TOKEN
+# Изменить .env: указать DEEPSEEK_API_KEY и TELEGRAM_BOT_TOKEN
 
-# Install dependencies
+# Установить зависимости
 make install
 
-# Apply database migrations
+# Применить миграции БД
 uv run alembic upgrade head
 
-# Verify everything works
+# Проверить, что всё работает
 make lint && make typecheck && make test
 
-# Run API server (terminal 1)
+# Запустить API-сервер (терминал 1)
 make dev-api
 
-# Run Telegram bot (terminal 2)
+# Запустить Telegram-бота (терминал 2)
 make dev-bot
 ```
 
@@ -100,7 +100,7 @@ lead-filter-bot/
 └── Makefile
 ```
 
-## API endpoints
+## API-эндпоинты
 
 | Method | Path | Description |
 |---|---|---|
@@ -151,19 +151,19 @@ networking позволяет боту резолвить и достигать 
 > docker-compose.yml` явно, чтобы применялся только базовый прод-конфиг.
 
 ```bash
-# 1. Pull latest code
+# 1. Подтянуть свежий код
 git pull
 
-# 2. Fill secrets (first time only — never commit this file)
+# 2. Заполнить секреты (только при первом запуске — никогда не коммитить этот файл)
 cp .env.example .env
-# Set: TELEGRAM_BOT_TOKEN, DEEPSEEK_API_KEY, DATABASE_URL (postgresql+asyncpg://...),
-#      QDRANT_API_KEY, REDIS_URL=redis://127.0.0.1:6379/0   # host-net → localhost, not "redis"
+# Указать: TELEGRAM_BOT_TOKEN, DEEPSEEK_API_KEY, DATABASE_URL (postgresql+asyncpg://...),
+#          QDRANT_API_KEY, REDIS_URL=redis://127.0.0.1:6379/0   # host-net → localhost, не "redis"
 
-# 3. Build and start (explicit -f bypasses the dev override; --force-recreate
-#    ensures the container actually picks up code-only changes)
+# 3. Собрать и запустить (явный -f обходит dev override; --force-recreate
+#    гарантирует, что контейнер подхватит изменения только в коде)
 docker-compose -f docker-compose.yml up -d --force-recreate --build bot
 
-# 4. Tail logs
+# 4. Следить за логами
 docker-compose -f docker-compose.yml logs -f bot
 ```
 
@@ -176,16 +176,16 @@ docker-compose -f docker-compose.yml logs -f bot
 
 ---
 
-## Database migrations
+## Миграции БД
 
 ```bash
-# Generate migration after model changes
+# Сгенерировать миграцию после изменений модели
 uv run alembic revision --autogenerate -m "your description"
 
-# Apply
+# Применить
 uv run alembic upgrade head
 
-# Rollback one step
+# Откатить на один шаг
 uv run alembic downgrade -1
 ```
 
