@@ -228,6 +228,9 @@ async def _finalize_and_respond(
                 "Если ситуация изменится — будем рады поговорить позже."
             )
 
+        async with session_factory() as session:
+            await add_message(session, conv_id, "assistant", text)
+
         await message.answer(text)
     except Exception:
         # Never leave the user hanging on "Анализирую...". Log with traceback,

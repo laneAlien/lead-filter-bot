@@ -15,7 +15,6 @@ services:
   bot:
     build: .
     restart: unless-stopped
-    network_mode: host
     depends_on:
       redis:
         condition: service_healthy
